@@ -165,7 +165,14 @@
         node.choices.forEach(choice => {
             const btn = document.createElement("button");
             btn.innerHTML = choice.text;
-            btn.onclick = () => renderStory(choice.target);
+            btn.onclick = () => {
+                // Hier prüfen wir jetzt, ob der Button einen Link (url) hat
+                if (choice.url) {
+                    window.location.href = choice.url;
+                } else {
+                    renderStory(choice.target);
+                }
+            };
             choicesContainer.appendChild(btn);
         });
     }
