@@ -5,37 +5,329 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kevins 30. Wiegenfest</title>
     <style>
-        body { 
-            background-color: #1a1a1a; 
-            color: #d4af37; 
-            font-family: 'Georgia', serif; 
-            text-align: center; 
-            padding-top: 10vh; 
+        body {
+            background-color: #1a1a1a;
+            color: #e8dcc5;
+            font-family: 'Georgia', serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            text-align: center;
         }
-        h1 { font-size: 2em; margin-bottom: 10px; }
-        p { color: #e8dcc5; font-size: 1.2em; margin-bottom: 40px; }
-        a { 
-            display: block; 
-            width: 80%; 
-            max-width: 300px; 
-            margin: 20px auto; 
-            padding: 15px; 
-            background-color: #4a0e0e; 
-            color: #d4af37; 
-            text-decoration: none; 
-            border: 1px solid #8b7355; 
-            border-radius: 5px; 
-            font-size: 1.2em; 
+        .highlight { color: #d4af37; font-weight: bold; }
+        h1 { color: #d4af37; font-size: 1.8em; border-bottom: 1px solid #8b7355; padding-bottom: 10px; margin-bottom: 20px;}
+        
+        /* Container Styles */
+        #menu-container, #text-container, #snake-container {
+            background-color: #2a2a2a;
+            border: 2px solid #8b7355;
+            border-radius: 10px;
+            padding: 30px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            display: none; /* Werden per JavaScript ein/ausgeblendet */
+        }
+        
+        /* Buttons */
+        .btn-container { display: flex; flex-direction: column; gap: 15px; margin-top: 20px; }
+        button {
+            background-color: #4a0e0e;
+            color: #d4af37;
+            border: 1px solid #8b7355;
+            padding: 15px 20px;
+            font-size: 1.1em;
+            font-family: 'Georgia', serif;
+            cursor: pointer;
+            border-radius: 5px;
             transition: 0.2s;
         }
-        a:hover { background-color: #661414; transform: scale(1.05); }
+        button:hover { background-color: #661414; transform: scale(1.02); }
+
+        /* Snake Styles */
+        canvas {
+            background-color: #4a5d23;
+            border: 4px solid #8b7355;
+            border-radius: 5px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            display: block;
+            margin: 20px auto;
+        }
+        #message-board { font-size: 1.2em; margin-bottom: 10px; height: 30px; }
     </style>
 </head>
 <body>
-    <h1>Die Legende von Kevin dem Langen</h1>
-    <p>Wähle deine Queste, edler Recke:</p>
+
+    <!-- ==================== HAUPTMENÜ ==================== -->
+    <div id="menu-container" style="display: block;">
+        <h1 style="border:none;">Die Legende von Kevin dem Langen</h1>
+        <p style="font-size: 1.2em;">Wähle deine Queste, edler Recke:</p>
+        <div class="btn-container">
+            <button onclick="showScreen('text-container'); renderStory('start');">📖 Das Text-Abenteuer</button>
+            <button onclick="startSnakeGame()">🐍 Die Snake-Queste</button>
+        </div>
+    </div>
+
+    <!-- ==================== TEXT-ADVENTURE ==================== -->
+    <div id="text-container">
+        <h1 id="story-title">Titel</h1>
+        <p id="story-text" style="font-size: 1.2em; line-height: 1.6;">Text lädt...</p>
+        <div id="choices" class="btn-container"></div>
+    </div>
+
+    <!-- ==================== SNAKE-GAME ==================== -->
+    <div id="snake-container">
+        <h1>Die Snake-Queste</h1>
+        <div id="message-board">Sammle 10x Bier/Grillgut! (Pfeiltasten zur Steuerung)</div>
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <div id="win-screen" style="display: none;">
+            <h2>Das Gelobte Land ist erreicht!</h2>
+            <p>Man wird vielleicht 30 – aber erwachsen werden müssen wir noch lange nicht!</p>
+            <p><span class="highlight">Lieber Kevin,</span><br>Wir schenken dir ein Wochenende Männer-Urlaub: See, Grill, Bier und Residieren im Occala Premium.</p>
+            <p>Datum: <span class="highlight">25.06. - 27.06.2027</span>!</p>
+            <div class="btn-container">
+                <button onclick="showScreen('menu-container')">🏠 Zurück zum Hauptmenü</button>
+            </div>
+        </div>
+        <div class="btn-container" style="margin-top: 15px;">
+            <button onclick="showScreen('menu-container')">🏠 Abbruch & Zurück zum Menü</button>
+        </div>
+    </div>
+
+<script>
+    // --- NAVIGATION LOGIK ---
+    let gameLoop; // Für den Snake-Timer
+
+    function showScreen(screenId) {
+        // Stoppe Snake im Hintergrund, falls es läuft
+        clearInterval(gameLoop);
+        
+        // Alle Bildschirme ausblenden
+        document.getElementById('menu-container').style.display = 'none';
+        document.getElementById('text-container').style.display = 'none';
+        document.getElementById('snake-container').style.display = 'none';
+        
+        // Gewünschten Bildschirm einblenden
+        document.getElementById(screenId).style.display = 'block';
+    }
+
+
+    // --- TEXT ADVENTURE LOGIK ---
+    const storyData = {
+        start: {
+            title: "Die Legende des Recken 'Kevin der Lange'",
+            text: "Ein Schelmenmärchen anlässlich des 30. Wiegenfestes. Bist du bereit, den Bund des Heiligen Gerstensaftes auf seiner bisher wichtigsten Queste zu begleiten?",
+            choices: [ { text: "Tretet ein in die Taverne und beginnt die Geschichte!", target: "prolog" } ]
+        },
+        prolog: {
+            title: "Prolog: Der Schauer der Dreißig",
+            text: "Düstere Kunde geht um im Reiche des Nordens: Der edle Recke <span class='highlight'>Kevin der Lange</span> steht kurz davor, die gefürchtete Schwelle der Drei Dekaden zu überschreiten.<br><br>Schleichender Haarverfall, zunehmende Geräusche beim Hinsetzen und der 2-Tage-Kater drohen! Doch seine Gefährten Henni, Fabi und Maggi schreiten ein.",
+            choices: [ { text: "Helft den Gefährten, den Streitwagen zu beladen!", target: "station1" } ]
+        },
+        station1: {
+            title: "Station 1: Der Aufbruch ins Unbekannte",
+            text: "Der Streitwagen muss bis unters Dach mit heiligem Proviant beladen werden. Was nehmen die Recken mit?",
+            choices: [
+                { text: "Bergeweise Grillgut, edelste Tropfen und geheiligte Klappstühle.", target: "station2" },
+                { text: "Grünen Tee, eine Yoga-Matte und vegane Reiswaffeln.", target: "station1_fail" }
+            ]
+        },
+        station1_fail: {
+            title: "Ein Frevel am Bund!",
+            text: "Der Gott des Gerstensaftes blickt zornig auf euch herab. Kevin beginnt sofort am Kopf kahl zu werden. Falsche Wahl!",
+            choices: [ { text: "Schnell zurück und richtig packen!", target: "station1" } ]
+        },
+        station2: {
+            title: "Station 2: Das tückische Gewässer",
+            text: "Geheimnisumwitterte Fluten versperren den Weg. 'Hüte deine Zunge!', warnten die Pergamente.<br><br>Wie antwortet ihr?",
+            choices: [
+                { text: "Wir möchten über den edlen Zotzensee!", target: "station3" },
+                { text: "Ist das hier der F***ensee?", target: "station2_fail" }
+            ]
+        },
+        station2_fail: {
+            title: "Die Macht des falschen Buchstabens",
+            text: "Du hast ein 'Z' durch ein garstig-ordinäres 'F' ersetzt! Die Schande ist unermesslich!",
+            choices: [ { text: "Zähne zusammenbeißen und es nochmal versuchen!", target: "station2" } ]
+        },
+        station3: {
+            title: "Station 3: Das schlüpfrige Dickicht",
+            text: "Das Ziel ist der Mössensee. Die Chroniken warnen vor der Trunkenheit des Schreiberlings!",
+            choices: [
+                { text: "Ich unterschlage ein 's' aus Faulheit.", target: "station3_fail" },
+                { text: "Ich halte das zweite 's' fest: M-Ö-S-S-E-N-S-E-E!", target: "ziel" }
+            ]
+        },
+        station3_fail: {
+            title: "Ein Pfuhl der Unzucht",
+            text: "Wehe dir! Durch das fehlende 's' wird aus dem ehrbaren Gewässer ein feucht-schlüpfriger Pfuhl.",
+            choices: [ { text: "Korrektur lesen und nochmal tippen!", target: "station3" } ]
+        },
+        ziel: {
+            title: "Das Gelobte Land",
+            text: "Die Nebel lichten sich. Vor euch erstrahlt das sagenumwobene Schloss der Entspannung: <span class='highlight'>Das OCCALA PREMIUM am Woblitzsee</span>.",
+            choices: [ { text: "Das oberste Gesetz des Bundes vollstrecken!", target: "epilog" } ]
+        },
+        epilog: {
+            title: "Einladung zum Männer-Urlaub",
+            text: "Man wird vielleicht 30 – aber erwachsen werden müssen wir noch lange nicht!<br><br><span class='highlight'>Lieber Kevin,</span><br>gut 14 Jahre Freundschaft sind ein starkes Fundament. Wir schenken dir ein Wochenende Männer-Urlaub. Pack die Badehose ein für den: <span class='highlight'>25.06. - 27.06.2027</span>!<br><br>In ewiger Treue,<br>Deine Gefährten Henni, Fabi und Maggi",
+            choices: [
+                { text: "Die Legende von vorn beginnen", action: () => renderStory("start") },
+                { text: "🐍 Zur nächsten Queste: Die Snake-Prüfung", action: () => startSnakeGame() },
+                { text: "🏠 Zurück zum Hauptmenü", action: () => showScreen('menu-container') }
+            ]
+        }
+    };
+
+    function renderStory(nodeKey) {
+        const node = storyData[nodeKey];
+        document.getElementById("story-title").innerHTML = node.title;
+        document.getElementById("story-text").innerHTML = node.text;
+        
+        const choicesContainer = document.getElementById("choices");
+        choicesContainer.innerHTML = "";
+        
+        node.choices.forEach(choice => {
+            const btn = document.createElement("button");
+            btn.innerHTML = choice.text;
+            // Wenn eine Action definiert ist, nimm die. Sonst lade das Target.
+            if (choice.action) {
+                btn.onclick = choice.action;
+            } else {
+                btn.onclick = () => renderStory(choice.target);
+            }
+            choicesContainer.appendChild(btn);
+        });
+    }
+
+
+    // --- SNAKE GAME LOGIK ---
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const gridSize = 20;
+    const tileCount = canvas.width / gridSize;
     
-    <a href="text.html">📖 Das Text-Abenteuer</a>
-    <a href="snake.html">🐍 Die Snake-Queste</a>
+    let snake, velocity, food, score, castleActive, gameOver;
+    const castle = {x: 17, y: 2};
+    const zotzensee = { x: 0, y: 0, w: 8, h: 8 }; 
+    const moessensee = { x: 12, y: 12, w: 8, h: 8 };
+
+    document.addEventListener("keydown", (e) => {
+        if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) e.preventDefault();
+        if (e.key === "ArrowUp" && velocity.y !== 1) velocity = {x: 0, y: -1};
+        if (e.key === "ArrowDown" && velocity.y !== -1) velocity = {x: 0, y: 1};
+        if (e.key === "ArrowLeft" && velocity.x !== 1) velocity = {x: -1, y: 0};
+        if (e.key === "ArrowRight" && velocity.x !== -1) velocity = {x: 1, y: 0};
+    });
+
+    function isInsideLake(x, y) {
+        return (x >= zotzensee.x && x < zotzensee.x + zotzensee.w && y >= zotzensee.y && y < zotzensee.y + zotzensee.h) ||
+               (x >= moessensee.x && x < moessensee.x + moessensee.w && y >= moessensee.y && y < moessensee.y + moessensee.h);
+    }
+
+    function spawnFood() {
+        let valid = false;
+        while (!valid) {
+            food.x = Math.floor(Math.random() * tileCount);
+            food.y = Math.floor(Math.random() * tileCount);
+            valid = !isInsideLake(food.x, food.y) && (food.x !== castle.x || food.y !== castle.y);
+        }
+        food.type = Math.random() > 0.5 ? '🍺' : '🥩';
+    }
+
+    function startSnakeGame() {
+        showScreen('snake-container');
+        document.getElementById("win-screen").style.display = "none";
+        document.getElementById("gameCanvas").style.display = "block";
+        document.getElementById("message-board").style.display = "block";
+        
+        snake = [{x: 2, y: 17}];
+        velocity = {x: 0, y: 0};
+        food = {x: 5, y: 15, type: '🍺'};
+        score = 0;
+        castleActive = false;
+        gameOver = false;
+        document.getElementById("message-board").innerHTML = "Sammle 10x Bier/Grillgut! (Pfeiltasten)";
+        
+        clearInterval(gameLoop);
+        gameLoop = setInterval(updateSnake, 150);
+    }
+
+    function updateSnake() {
+        if (gameOver) return;
+        
+        let head = { x: snake[0].x + velocity.x, y: snake[0].y + velocity.y };
+
+        if (velocity.x === 0 && velocity.y === 0) { drawSnake(); return; }
+
+        if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) return failSnake("An die Wand gefahren! Drücke Pfeiltaste für Neustart.");
+        if (isInsideLake(head.x, head.y)) return failSnake("Im See ertrunken! Drücke Pfeiltaste für Neustart.");
+        for (let part of snake) { if (part.x === head.x && part.y === head.y) return failSnake("In den Fuß gebissen! Drücke Pfeiltaste für Neustart."); }
+
+        snake.unshift(head);
+
+        if (castleActive && head.x === castle.x && head.y === castle.y) {
+            gameOver = true;
+            document.getElementById("gameCanvas").style.display = "none";
+            document.getElementById("message-board").style.display = "none";
+            document.getElementById("win-screen").style.display = "block";
+            return;
+        }
+
+        if (head.x === food.x && head.y === food.y) {
+            score++;
+            if (score >= 10) {
+                castleActive = true;
+                document.getElementById("message-board").innerHTML = "Das Occala Premium ist erschienen! Erreiche das Schloss! 🏰";
+            } else {
+                document.getElementById("message-board").innerHTML = `Gesammelt: ${score}/10`;
+                spawnFood();
+            }
+        } else {
+            snake.pop();
+        }
+        drawSnake();
+    }
+
+    function failSnake(msg) {
+        document.getElementById("message-board").innerHTML = `<span style='color:red'>${msg}</span>`;
+        // Setze Snake zurück für schnellen Neustart bei nächstem Tastendruck
+        snake = [{x: 2, y: 17}];
+        velocity = {x: 0, y: 0};
+        score = 0;
+        castleActive = false;
+        spawnFood();
+    }
+
+    function drawSnake() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = "#1e3d59";
+        ctx.fillRect(zotzensee.x * gridSize, zotzensee.y * gridSize, zotzensee.w * gridSize, zotzensee.h * gridSize);
+        ctx.fillRect(moessensee.x * gridSize, moessensee.y * gridSize, moessensee.w * gridSize, moessensee.h * gridSize);
+        
+        ctx.fillStyle = "#fff";
+        ctx.font = "12px Arial";
+        ctx.fillText("Zotzensee", 15, 70);
+        ctx.fillText("Mössensee", 250, 310);
+
+        if (castleActive) {
+            ctx.font = "20px Arial";
+            ctx.fillText("🏰", castle.x * gridSize, castle.y * gridSize + 18);
+        } else if (score < 10) {
+            ctx.font = "18px Arial";
+            ctx.fillText(food.type, food.x * gridSize, food.y * gridSize + 16);
+        }
+
+        ctx.fillStyle = "#8b7355";
+        for (let part of snake) { ctx.fillRect(part.x * gridSize, part.y * gridSize, gridSize - 1, gridSize - 1); }
+        ctx.fillStyle = "#d4af37";
+        ctx.fillRect(snake[0].x * gridSize, snake[0].y * gridSize, gridSize - 1, gridSize - 1);
+    }
+</script>
 </body>
 </html>
