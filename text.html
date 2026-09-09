@@ -166,7 +166,6 @@
             const btn = document.createElement("button");
             btn.innerHTML = choice.text;
             btn.onclick = () => {
-                // Hier prüfen wir jetzt, ob der Button einen Link (url) hat
                 if (choice.url) {
                     window.location.href = choice.url;
                 } else {
